@@ -4,7 +4,7 @@ The following ABNF grammar defines the The Malamute Protocol:
 
     open = C:CONNECTION-OPEN ( S:OK / S:ERROR )
 
-    traffic = stream-traffic / mailbox-traffic / service-traffic / credit
+    traffic = stream-traffic / mailbox-traffic / service-traffic / credit / diagnostics
 
     stream-traffic = C:STREAM-WRITE ( S:OK / S:ERROR )
                    / C:STREAM-READ
@@ -19,6 +19,8 @@ The following ABNF grammar defines the The Malamute Protocol:
                     / S:SERVICE-DELIVER [ C:CONFIRM ]
 
     credit = C:CREDIT
+
+    diagnostics = C:GET-PIPE-STATISTICS ( S:PIPE-STATISTICS )
     
     heartbeat = C:CONNECTION-PING ( S:CONNECTION-PONG / S:ERROR )
 
@@ -179,6 +181,16 @@ The following ABNF grammar defines the The Malamute Protocol:
 
     CONFIRM         = signature %d17 tracker status
     tracker         = string                ; Message tracker
+    status          = status                ; 
+
+    ;  No description                                                        
+
+    GET-PIPE-STATISTICS = signature %d18
+
+    ;  No description                                                        
+
+    PIPE-STATISTICS = signature %d19 statistics status
+    statistics      = string                ; Pipe statistics
     status          = status                ; 
 
     ; A msg is zero or more distinct frames

@@ -15,7 +15,7 @@
 
     open = C:CONNECTION-OPEN ( S:OK / S:ERROR )
 
-    traffic = stream-traffic / mailbox-traffic / service-traffic / credit
+    traffic = stream-traffic / mailbox-traffic / service-traffic / credit / diagnostics
 
     stream-traffic = C:STREAM-WRITE ( S:OK / S:ERROR )
                    / C:STREAM-READ
@@ -30,6 +30,8 @@
                     / S:SERVICE-DELIVER [ C:CONFIRM ]
 
     credit = C:CREDIT
+
+    diagnostics = C:GET-PIPE-STATISTICS ( S:PIPE-STATISTICS )
     
     heartbeat = C:CONNECTION-PING ( S:CONNECTION-PONG / S:ERROR )
 
@@ -189,6 +191,14 @@
         confirmation to original sender. If status code is 300 or higher, this
         indicates that the message could not be delivered.
         <field name = "tracker" type = "string">Message tracker</field>
+        <field name = "status" type = "status" />
+    </message>
+
+    <message name = "GET PIPE STATISTICS">
+    </message>
+    
+    <message name = "PIPE STATISTICS">
+        <field name = "statistics" type = "string">Pipe statistics</field>
         <field name = "status" type = "status" />
     </message>
 

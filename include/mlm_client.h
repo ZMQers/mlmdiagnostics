@@ -23,10 +23,7 @@ extern "C" {
 //  @warning Please edit the model at "api/mlm_client.api" to make changes.
 //  @interface
 //  This API is a draft, and may change without notice.
-
-//  MVY: disabled by patches/0002-remove-draft-guard.patch
-//#ifdef MLM_BUILD_DRAFT_API
-
+#ifdef MLM_BUILD_DRAFT_API
 //  *** Draft method, for development use, may change without warning ***
 //  Create a new mlm_client, return the reference if successful,   
 //  or NULL if construction failed due to lack of available memory.
@@ -206,8 +203,7 @@ MLM_EXPORT void
 MLM_EXPORT void
     mlm_client_test (bool verbose);
 
-//  MVY: disabled by patches/0002-remove-draft-guard.patch
-//#endif // MLM_BUILD_DRAFT_API
+#endif // MLM_BUILD_DRAFT_API
 //  @end
 
 #ifdef __cplusplus

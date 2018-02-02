@@ -36,37 +36,56 @@
 #if defined (__WINDOWS__)
 #   if defined MLM_STATIC
 #       define MLM_EXPORT
-// This part was added manually for "compilation with mingw64 using autotools"
 #   elif defined MLM_INTERNAL_BUILD
 #       if defined DLL_EXPORT
 #           define MLM_EXPORT __declspec(dllexport)
 #       else
-#           define MLM_EXPORT __declspec(dllexport)
+#           define MLM_EXPORT
 #       endif
-// end of manually added part
 #   elif defined MLM_EXPORTS
 #       define MLM_EXPORT __declspec(dllexport)
 #   else
 #       define MLM_EXPORT __declspec(dllimport)
 #   endif
+#   define MLM_PRIVATE
 #else
 #   define MLM_EXPORT
+#   if (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER
+#       define MLM_PRIVATE __attribute__ ((visibility ("hidden")))
+#   else
+#       define MLM_PRIVATE
+#   endif
 #endif
+
+//  Project has no stable classes, so we build the draft API
+#undef  MLM_BUILD_DRAFT_API
+#define MLM_BUILD_DRAFT_API
 
 //  Opaque class structures to allow forward references
 //  These classes are stable or legacy and built in all releases
+//  Draft classes are by default not built in stable releases
+#ifdef MLM_BUILD_DRAFT_API
 typedef struct _mlm_proto_t mlm_proto_t;
 #define MLM_PROTO_T_DEFINED
 typedef struct _mlm_server_t mlm_server_t;
 #define MLM_SERVER_T_DEFINED
 typedef struct _mlm_client_t mlm_client_t;
 #define MLM_CLIENT_T_DEFINED
+#endif // MLM_BUILD_DRAFT_API
 
 
 //  Public classes, each with its own header file
+#ifdef MLM_BUILD_DRAFT_API
 #include "mlm_proto.h"
 #include "mlm_server.h"
 #include "mlm_client.h"
+#endif // MLM_BUILD_DRAFT_API
+
+#ifdef MLM_BUILD_DRAFT_API
+//  Self test for private classes
+MLM_EXPORT void
+    mlm_private_selftest (bool verbose);
+#endif // MLM_BUILD_DRAFT_API
 
 #endif
 /*
