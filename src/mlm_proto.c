@@ -53,6 +53,7 @@ struct _mlm_proto_t {
     uint16_t status_code;               //  3-digit status code
     char status_reason [256];           //  Printable explanation
     uint16_t amount;                    //  Number of messages
+    char statistics [256];              //  Pipe statistics
 };
 
 //  --------------------------------------------------------------------------
@@ -360,6 +361,16 @@ mlm_proto_t *
     if (streq ("MLM_PROTO_STREAM_CANCEL", message)) {
         self = mlm_proto_new ();
         mlm_proto_set_id (self, MLM_PROTO_STREAM_CANCEL);
+    }
+    else
+    if (streq ("MLM_PROTO_GET_PIPE_STATISTICS", message)) {
+        self = mlm_proto_new ();
+        mlm_proto_set_id (self, MLM_PROTO_GET_PIPE_STATISTICS);
+    }
+    else
+    if (streq ("MLM_PROTO_PIPE_STATISTICS", message)) {
+        self = mlm_proto_new ();
+        mlm_proto_set_id (self, MLM_PROTO_PIPE_STATISTICS);
     }
     else
        {
@@ -968,6 +979,48 @@ mlm_proto_t *
             strncpy (self->stream, s, 256);
             }
             break;
+        case MLM_PROTO_GET_PIPE_STATISTICS:
+            break;
+        case MLM_PROTO_PIPE_STATISTICS:
+            content = zconfig_locate (config, "content");
+            if (!content) {
+                zsys_error ("Can't find 'content' section");
+                mlm_proto_destroy (&self);
+                return NULL;
+            }
+            {
+            char *s = zconfig_get (content, "statistics", NULL);
+            if (!s) {
+                mlm_proto_destroy (&self);
+                return NULL;
+            }
+            strncpy (self->statistics, s, 256);
+            }
+            {
+            char *es = NULL;
+            char *s = zconfig_get (content, "status_code", NULL);
+            if (!s) {
+                zsys_error ("content/status_code not found");
+                mlm_proto_destroy (&self);
+                return NULL;
+            }
+            uint64_t uvalue = (uint64_t) strtoll (s, &es, 10);
+            if (es != s+strlen (s)) {
+                zsys_error ("content/status_code: %s is not a number", s);
+                mlm_proto_destroy (&self);
+                return NULL;
+            }
+            self->status_code = uvalue;
+            }
+            {
+            char *s = zconfig_get (content, "status_reason", NULL);
+            if (!s) {
+                mlm_proto_destroy (&self);
+                return NULL;
+            }
+            strncpy (self->status_reason, s, 256);
+            }
+            break;
     }
     return self;
 }
@@ -1022,6 +1075,7 @@ mlm_proto_dup (mlm_proto_t *other)
     mlm_proto_set_status_code (copy, mlm_proto_status_code (other));
     mlm_proto_set_status_reason (copy, mlm_proto_status_reason (other));
     mlm_proto_set_amount (copy, mlm_proto_amount (other));
+    mlm_proto_set_statistics (copy, mlm_proto_statistics (other));
 
     return copy;
 }
@@ -1213,6 +1267,15 @@ mlm_proto_recv (mlm_proto_t *self, zsock_t *input)
             GET_STRING (self->stream);
             break;
 
+        case MLM_PROTO_GET_PIPE_STATISTICS:
+            break;
+
+        case MLM_PROTO_PIPE_STATISTICS:
+            GET_STRING (self->statistics);
+            GET_NUMBER2 (self->status_code);
+            GET_STRING (self->status_reason);
+            break;
+
         default:
             zsys_warning ("mlm_proto: bad message ID");
             rc = -2;            //  Malformed
@@ -1310,6 +1373,11 @@ mlm_proto_send (mlm_proto_t *self, zsock_t *output)
             break;
         case MLM_PROTO_STREAM_CANCEL:
             frame_size += 1 + strlen (self->stream);
+            break;
+        case MLM_PROTO_PIPE_STATISTICS:
+            frame_size += 1 + strlen (self->statistics);
+            frame_size += 2;            //  status_code
+            frame_size += 1 + strlen (self->status_reason);
             break;
     }
     //  Now serialize message into the frame
@@ -1414,6 +1482,12 @@ mlm_proto_send (mlm_proto_t *self, zsock_t *output)
 
         case MLM_PROTO_STREAM_CANCEL:
             PUT_STRING (self->stream);
+            break;
+
+        case MLM_PROTO_PIPE_STATISTICS:
+            PUT_STRING (self->statistics);
+            PUT_NUMBER2 (self->status_code);
+            PUT_STRING (self->status_reason);
             break;
 
     }
@@ -1581,6 +1655,17 @@ mlm_proto_print (mlm_proto_t *self)
         case MLM_PROTO_STREAM_CANCEL:
             zsys_debug ("MLM_PROTO_STREAM_CANCEL:");
             zsys_debug ("    stream='%s'", self->stream);
+            break;
+
+        case MLM_PROTO_GET_PIPE_STATISTICS:
+            zsys_debug ("MLM_PROTO_GET_PIPE_STATISTICS:");
+            break;
+
+        case MLM_PROTO_PIPE_STATISTICS:
+            zsys_debug ("MLM_PROTO_PIPE_STATISTICS:");
+            zsys_debug ("    statistics='%s'", self->statistics);
+            zsys_debug ("    status_code=%ld", (long) self->status_code);
+            zsys_debug ("    status_reason='%s'", self->status_reason);
             break;
 
     }
@@ -1985,6 +2070,36 @@ mlm_proto_zpl (mlm_proto_t *self, zconfig_t *parent)
             zconfig_putf (config, "stream", "%s", self->stream);
             break;
             }
+        case MLM_PROTO_GET_PIPE_STATISTICS:
+        {
+            zconfig_put (root, "message", "MLM_PROTO_GET_PIPE_STATISTICS");
+
+            if (self->routing_id) {
+                char *hex = NULL;
+                STR_FROM_BYTES (hex, zframe_data (self->routing_id), zframe_size (self->routing_id));
+                zconfig_putf (root, "routing_id", "%s", hex);
+                zstr_free (&hex);
+            }
+
+            break;
+            }
+        case MLM_PROTO_PIPE_STATISTICS:
+        {
+            zconfig_put (root, "message", "MLM_PROTO_PIPE_STATISTICS");
+
+            if (self->routing_id) {
+                char *hex = NULL;
+                STR_FROM_BYTES (hex, zframe_data (self->routing_id), zframe_size (self->routing_id));
+                zconfig_putf (root, "routing_id", "%s", hex);
+                zstr_free (&hex);
+            }
+
+            zconfig_t *config = zconfig_new ("content", root);
+            zconfig_putf (config, "statistics", "%s", self->statistics);
+            zconfig_putf (config, "status_code", "%ld", (long) self->status_code);
+            zconfig_putf (config, "status_reason", "%s", self->status_reason);
+            break;
+            }
     }
     return root;
 }
@@ -2085,6 +2200,12 @@ mlm_proto_command (mlm_proto_t *self)
             break;
         case MLM_PROTO_STREAM_CANCEL:
             return ("STREAM_CANCEL");
+            break;
+        case MLM_PROTO_GET_PIPE_STATISTICS:
+            return ("GET_PIPE_STATISTICS");
+            break;
+        case MLM_PROTO_PIPE_STATISTICS:
+            return ("PIPE_STATISTICS");
             break;
     }
     return "?";
@@ -2328,6 +2449,28 @@ mlm_proto_set_amount (mlm_proto_t *self, uint16_t amount)
 {
     assert (self);
     self->amount = amount;
+}
+
+
+//  --------------------------------------------------------------------------
+//  Get/set the statistics field
+
+const char *
+mlm_proto_statistics (mlm_proto_t *self)
+{
+    assert (self);
+    return self->statistics;
+}
+
+void
+mlm_proto_set_statistics (mlm_proto_t *self, const char *value)
+{
+    assert (self);
+    assert (value);
+    if (value == self->statistics)
+        return;
+    strncpy (self->statistics, value, 255);
+    self->statistics [255] = 0;
 }
 
 
@@ -2952,6 +3095,64 @@ mlm_proto_test (bool verbose)
         if (instance < 2)
             assert (mlm_proto_routing_id (self));
         assert (streq (mlm_proto_stream (self), "Life is short but Now lasts for ever"));
+        if (instance == 2) {
+            mlm_proto_destroy (&self);
+            self = self_temp;
+        }
+    }
+    mlm_proto_set_id (self, MLM_PROTO_GET_PIPE_STATISTICS);
+
+    // convert to zpl
+    config = mlm_proto_zpl (self, NULL);
+    if (verbose)
+        zconfig_print (config);
+    //  Send twice
+    mlm_proto_send (self, output);
+    mlm_proto_send (self, output);
+
+    for (instance = 0; instance < 3; instance++) {
+        mlm_proto_t *self_temp = self;
+        if (instance < 2)
+            mlm_proto_recv (self, input);
+        else {
+            self = mlm_proto_new_zpl (config);
+            assert (self);
+            zconfig_destroy (&config);
+        }
+        if (instance < 2)
+            assert (mlm_proto_routing_id (self));
+        if (instance == 2) {
+            mlm_proto_destroy (&self);
+            self = self_temp;
+        }
+    }
+    mlm_proto_set_id (self, MLM_PROTO_PIPE_STATISTICS);
+
+    mlm_proto_set_statistics (self, "Life is short but Now lasts for ever");
+    mlm_proto_set_status_code (self, 123);
+    mlm_proto_set_status_reason (self, "Life is short but Now lasts for ever");
+    // convert to zpl
+    config = mlm_proto_zpl (self, NULL);
+    if (verbose)
+        zconfig_print (config);
+    //  Send twice
+    mlm_proto_send (self, output);
+    mlm_proto_send (self, output);
+
+    for (instance = 0; instance < 3; instance++) {
+        mlm_proto_t *self_temp = self;
+        if (instance < 2)
+            mlm_proto_recv (self, input);
+        else {
+            self = mlm_proto_new_zpl (config);
+            assert (self);
+            zconfig_destroy (&config);
+        }
+        if (instance < 2)
+            assert (mlm_proto_routing_id (self));
+        assert (streq (mlm_proto_statistics (self), "Life is short but Now lasts for ever"));
+        assert (mlm_proto_status_code (self) == 123);
+        assert (streq (mlm_proto_status_reason (self), "Life is short but Now lasts for ever"));
         if (instance == 2) {
             mlm_proto_destroy (&self);
             self = self_temp;

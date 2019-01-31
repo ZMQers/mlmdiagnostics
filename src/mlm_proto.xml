@@ -15,23 +15,25 @@
 
     open = C:CONNECTION-OPEN ( S:OK / S:ERROR )
 
-    traffic = stream-traffic / mailbox-traffic / service-traffic / credit
+    traffic = stream-traffic / mailbox-traffic / service-traffic / credit / diagnostics
 
     stream-traffic = C:STREAM-WRITE ( S:OK / S:ERROR )
                    / C:STREAM-READ
                    / C:STREAM-CANCEL
                    / C:STREAM-PUBLISH
                    / S:STREAM-DELIVER
-    
+
     mailbox-traffic = C:MAILBOX-SEND ( S:OK [ S:CONFIRM ] / S:ERROR )
                     / S:MAILBOX-DELIVER [ C:CONFIRM ]
-    
+
     service-traffic = C:SERVICE-SEND ( S:OK [ S:CONFIRM ] / S:ERROR )
-                    / C:SERVICE-OFFER 
+                    / C:SERVICE-OFFER
                     / S:SERVICE-DELIVER [ C:CONFIRM ]
 
     credit = C:CREDIT
-    
+
+    diagnostics = C:GET-PIPE-STATISTICS ( S:PIPE-STATISTICS )
+
     heartbeat = C:CONNECTION-PING ( S:CONNECTION-PONG / S:ERROR )
 
     close = C:CONNECTION-CLOSE ( S:OK / S:ERROR )
@@ -46,7 +48,7 @@
         <field name = "version" type = "number" size = "2" value = "1">Protocol version 1</field>
         <field name = "address" type = "string">Client address</field>
     </message>
-    
+
     <message name = "CONNECTION PING">
         Client pings the server. Server replies with CONNECTION-PONG, or
         ERROR with status COMMAND-INVALID if the client is not recognized
@@ -56,7 +58,7 @@
     <message name = "CONNECTION PONG">
         Server replies to a client connection ping.
     </message>
-    
+
     <message name = "CONNECTION CLOSE">
         Client closes the connection. This is polite though not mandatory.
         Server will reply with OK or ERROR.
@@ -66,10 +68,10 @@
     <message name = "STREAM WRITE">
         Client declares intention to write to a stream. If stream does not
         exist, server creates it. A client can write to a single stream at
-        once. Server replies with OK or ERROR. 
+        once. Server replies with OK or ERROR.
         <field name = "stream" type = "string">Name of stream</field>
     </message>
-    
+
     <message name = "STREAM READ">
         Client opens a stream for reading, specifying a pattern to match
         message subjects. An empty pattern matches everything. If the stream
@@ -79,7 +81,7 @@
         <field name = "stream" type = "string">Name of stream</field>
         <field name = "pattern" type = "string">Match message subjects</field>
     </message>
-    
+
     <message name = "STREAM SEND">
         Client publishes a message to the current stream. A stream message
         has a subject, and a content of zero or more frames. Server does not
@@ -98,7 +100,7 @@
         <field name = "subject" type = "string">Message subject</field>
         <field name = "content" type = "msg">Message body frames</field>
     </message>
-    
+
     <!-- Mailbox operations -->
     <message name = "MAILBOX SEND">
         Client sends a message to a specified mailbox. Client does not open the
@@ -116,7 +118,7 @@
     </message>
 
     <message name = "MAILBOX DELIVER">
-        Server delivers a mailbox message to client. Note that client does not 
+        Server delivers a mailbox message to client. Note that client does not
         open its own mailbox for reading; this is implied in CONNECTION-OPEN.
         If tracker is not empty, client must respond with CONFIRM when it
         formally accepts delivery of the message, or if the server delivers
@@ -162,7 +164,7 @@
         <field name = "tracker" type = "string">Message tracker</field>
         <field name = "content" type = "msg">Message body frames</field>
     </message>
-    
+
     <!-- These messages are used in all classes -->
     <message name = "OK">
         Server replies with success status. Actual status code provides more
@@ -199,10 +201,19 @@
         <field name = "stream" type = "string">Name of stream</field>
     </message>
 
+    <message name = "GET PIPE STATISTICS">
+    </message>
+
     <type name = "status">
         <field name = "code" type = "number" size = "2">3-digit status code</field>
         <field name = "reason" type = "string">Printable explanation</field>
     </type>
+
+    <message name = "PIPE STATISTICS">
+        <field name = "statistics" type = "string">Pipe statistics</field>
+        <field name = "status" type = "status" />
+    </message>
+
 
     <!-- Success codes -->
     <define name = "SUCCESS" value = "200" />
