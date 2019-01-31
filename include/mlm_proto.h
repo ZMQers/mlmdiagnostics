@@ -149,6 +149,13 @@ indicates that the message could not be delivered.
     STREAM_CANCEL - Cancels and removes all subscriptions to a stream.
 Server replies with OK or ERROR.
         stream              string      Name of stream
+
+    GET_PIPE_STATISTICS - This is a codec for the Malamute Protocol (RFC tbd)
+
+    PIPE_STATISTICS - This is a codec for the Malamute Protocol (RFC tbd)
+        statistics          string      Pipe statistics
+        status_code         number 2    3-digit status code
+        status_reason       string      Printable explanation
 */
 
 #define MLM_PROTO_SUCCESS                   200
@@ -175,6 +182,8 @@ Server replies with OK or ERROR.
 #define MLM_PROTO_CREDIT                    16
 #define MLM_PROTO_CONFIRM                   17
 #define MLM_PROTO_STREAM_CANCEL             18
+#define MLM_PROTO_GET_PIPE_STATISTICS       19
+#define MLM_PROTO_PIPE_STATISTICS           20
 
 #include <czmq.h>
 
@@ -307,6 +316,12 @@ MLM_EXPORT uint16_t
     mlm_proto_amount (mlm_proto_t *self);
 MLM_EXPORT void
     mlm_proto_set_amount (mlm_proto_t *self, uint16_t amount);
+
+//  Get/set the statistics field
+MLM_EXPORT const char *
+    mlm_proto_statistics (mlm_proto_t *self);
+MLM_EXPORT void
+    mlm_proto_set_statistics (mlm_proto_t *self, const char *value);
 
 //  Self test of this class
 MLM_EXPORT void
